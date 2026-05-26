@@ -222,28 +222,56 @@ class ModernMeetTerminal:
         self.pipeline.cursor.execute("DELETE FROM semifinals_output")
         log_view = "=== STAGE 2: OFFICIAL SEMIFINALS SEEDING SHEET ===\n"
         
+        # ⏱️ PARAMETER DICTIONARY: Set your maximum allowed times for each division here
+        CUTOFF_TIMES = {
+            "O": 11.80,  # Division O must be 11.80s or faster
+            "A": 12.50,  # Division A must be 12.50s or faster
+            "B": 13.50,  # Division B must be 13.50s or faster                                                                                                                                                              # if you want to change the parametre 
+            "C": 14.80   # Division C must be 14.80s or faster
+        }
+        
+        rejected_log = "\n❌ ATHLETES WHO DID NOT QUALIFY (TOO SLOW):\n"
+        has_rejections = False
+        
         for div in ["O", "A", "B", "C"]:
             self.pipeline.cursor.execute("SELECT name, class, house, track_time FROM trials_active WHERE division=? AND track_time > 0 ORDER BY track_time ASC", (div,))
             runners = self.pipeline.cursor.fetchall()
             
             if runners:
-                log_view += f"\n--- DIVISION {div} SEMIFINALS ---\n"
-                heat, lane = 1, 1
-                log_view += f"\n[Division {div} - Semifinal Heat {heat}]\n"
+                limit = CUTOFF_TIMES.get(div, 99.99)
                 
-                for name, cls, house, time in runners:
-                    self.pipeline.cursor.execute("INSERT INTO semifinals_output VALUES (?, ?, ?, ?, ?, ?, ?)", ('200m', div, heat, lane, name, house, time))
-                    log_view += f"  {lane}. {name.ljust(16)} | Class: {cls.ljust(4)} | {house.ljust(7)} | Time: {time}s\n"
-                    lane += 1
-                    if lane > 6:
-                        lane, heat = 1, heat + 1
-                        if runners.index((name, cls, house, time)) < len(runners) - 1:
-                            log_view += f"\n[Division {div} - Semifinal Heat {heat}]\n"
+                # Filter out only the runners who beat the cutoff time parameter
+                qualified_runners = [r for r in runners if r <= limit]
+                disqualified_runners = [r for r in runners if r > limit]
+                
+                # Log the athletes who were too slow
+                for name, cls, house, time in disqualified_runners:
+                    rejected_log += f"  * {name.ljust(16)} | Div {div} | Time: {time}s (Cutoff was: {limit}s)\n"
+                    has_rejections = True
+                
+                if qualified_runners:
+                    log_view += f"\n--- DIVISION {div} SEMIFINALS (Cutoff: {limit}s) ---\n"
+                    heat, lane = 1, 1
+                    log_view += f"\n[Division {div} - Semifinal Heat {heat}]\n"
+                    
+                    for name, cls, house, time in qualified_runners:
+                        self.pipeline.cursor.execute("INSERT INTO semifinals_output VALUES (?, ?, ?, ?, ?, ?, ?)", ('100m', div, heat, lane, name, house, time))
+                        log_view += f"  {lane}. {name.ljust(16)} | Class: {cls.ljust(4)} | {house.ljust(7)} | Time: {time}s\n"
+                        lane += 1
+                        if lane > 6:
+                            lane, heat = 1, heat + 1
+                            if qualified_runners.index((name, cls, house, time)) < len(qualified_runners) - 1:
+                                log_view += f"\n[Division {div} - Semifinal Heat {heat}]\n"
                             
         self.pipeline.conn.commit()
+        
+        # Append rejections to the bottom of the screen printout if there are any
+        if has_rejections:
+            log_view += "\n" + "="*40 + rejected_log
+            
         self.display.delete(1.0, tk.END)
         self.display.insert(tk.END, log_view)
-
+        
     def display_tickmark_window(self):
         self.pipeline.cursor.execute("SELECT COUNT(*) FROM trials_active WHERE track_time > 0.0")
         if self.pipeline.cursor.fetchone() == 0:

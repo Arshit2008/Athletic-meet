@@ -14,7 +14,7 @@ class StudentRegistryApp(ctk.CTk):
         super().__init__()
         self.title("Athletic Database Management Terminal")
         self.geometry("500x650")
-        self.filename = "School_Reg.xlsx"
+        self.filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "School_Reg.xlsx")
         self._initialize_excel_file()
         self._assemble_form_components()
         
