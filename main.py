@@ -51,13 +51,27 @@ class AthleticExcelPipeline:
         try:
             wb = openpyxl.load_workbook(filename, data_only=True)
             sheet = wb.active
+            
+            # Wipes out the database table completely before reading fresh rows
+            self.cursor.execute("DELETE FROM school_data")
+            self.conn.commit()
+            
             data_tuples = []
+            seen_ids = set() # Track IDs read during this specific execution loop
             
             for row in sheet.iter_rows(min_row=2, max_row=2000, values_only=True):
+                # Cutoff immediately if row is empty or missing an ID
                 if not row or row is None or str(row).strip() == "":
                     break 
                 
-                stu_id, name, class_and_section, house, dob_val, height, weight, r100, r200 = row
+                stu_id = str(row).strip()
+                name, class_and_section, house, dob_val, height, weight, r100, r200 = row[1:]
+                
+                # FAIL-SAFE LAYER: If openpyxl reads a ghost duplicate row, skip it cleanly!
+                if stu_id in seen_ids:
+                    print(f"⚠️ Warning: Skipped ghost duplicate ID '{stu_id}' in spreadsheet to prevent database crash.")
+                    continue
+                seen_ids.add(stu_id)
                 
                 if isinstance(dob_val, datetime):
                     dob_string = dob_val.strftime("%d-%m-%Y")
@@ -65,20 +79,23 @@ class AthleticExcelPipeline:
                     dob_string = str(dob_val).strip()
                 
                 data_tuples.append((
-                    str(stu_id).strip(), str(name).strip(), str(class_and_section).strip(), str(house).strip(),
+                    stu_id, str(name).strip(), str(class_and_section).strip(), str(house).strip(),
                     dob_string, float(height or 0.0), float(weight or 0.0),
                     1 if str(r100).strip().upper() == 'TRUE' else 0,
                     1 if str(r200).strip().upper() == 'TRUE' else 0
                 ))
             
-            self.cursor.execute("DELETE FROM school_data")
-            self.cursor.executemany("INSERT INTO school_data VALUES (?,?,?,?,?,?,?,?,?)", data_tuples)
-            self.conn.commit()
+            # Batch insert the unique data pool safely
+            if data_tuples:
+                self.cursor.executemany("INSERT INTO school_data VALUES (?,?,?,?,?,?,?,?,?)", data_tuples)
+                self.conn.commit()
+                
+            wb.close()
             return True
         except Exception as e:
             messagebox.showerror("Excel Parse Error", f"Failed reading from XLSX file:\n{str(e)}")
             return False
-
+        
 # =========================================================================
 # 2. SEEDING LOGIC ENGINE
 # =========================================================================
@@ -86,24 +103,33 @@ class MeetLogicProcessor:
     def __init__(self, pipeline):
         self.pipeline = pipeline
 
-    def calculate_legacy_score(self, dob_str, height_cm, weight_kg):
-        clean_dob = str(dob_str).strip()
-        date_formats = ["%d-%m-%Y", "%Y-%m-%d"]
-        dob = None
-        for fmt in date_formats:
-            try:
-                dob = datetime.strptime(clean_dob, fmt)
-                break
-            except ValueError:
-                continue
+    def calculate_legacy_score(self, dob_input, height_cm, weight_kg):
+        # FIXED: If Excel already parsed it as a datetime object, use it directly!
+        if isinstance(dob_input, datetime):
+            dob = dob_input
+        else:
+            clean_dob = str(dob_input).strip()
+            # Handle common timestamp strings Excel drops into text conversions
+            if " " in clean_dob:
+                clean_dob = clean_dob.split(" ")
+                
+            date_formats = ["%d-%m-%Y", "%Y-%m-%d"]
+            dob = None
+            for fmt in date_formats:
+                try:
+                    dob = datetime.strptime(clean_dob, fmt)
+                    break
+                except ValueError:
+                    continue
+                    
         if dob is None:
-            raise ValueError(f"Date '{dob_str}' format invalid.")
+            raise ValueError(f"Date '{dob_input}' format invalid.")
             
         meet_date = datetime(2026, 5, 25)
         age_months = (meet_date - dob).days / 30.4
         score = (age_months / 9.0) + (height_cm / 7.62) + (weight_kg * 0.73) - 3.50
         return round(score, 2)
-
+    
     def assign_division(self, score):
         if score >= 100: return "O"
         elif score >= 88: return "A"

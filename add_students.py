@@ -112,7 +112,6 @@ class StudentRegistryApp(ctk.CTk):
         save_btn.pack(fill=tk.X, padx=25, pady=20)
 
     def save_record_to_excel(self):
-        # Validate data variables from input nodes
         stu_id = self.ent_id.get().strip()
         name = self.ent_name.get().strip()
         cls_val = self.drop_class.get()
@@ -126,36 +125,49 @@ class StudentRegistryApp(ctk.CTk):
             messagebox.showwarning("Validation Error", "All registration input fields must contain valid parameters!")
             return
             
-        # Enforce date verification syntax safety checks
         try:
             datetime.strptime(dob, "%d-%m-%Y")
         except ValueError:
             messagebox.showerror("Date Format Input Error", "Date of Birth entry details must match strict 'DD-MM-YYYY' format constraints!")
             return
             
-        # Assemble class formatting directly to match your custom section mappings (e.g. 12th-A)
         combined_class_section = f"{cls_val}-{sec_val}"
         
         try:
             wb = openpyxl.load_workbook(self.filename)
             sheet = wb.active
             
-            # Verify and prevent duplicate student ID configurations
-            for r in sheet.iter_rows(min_row=2, max_row=sheet.max_row, values_only=True):
-                if r and str(r).strip() == stu_id:
-                    messagebox.showerror("Key Integrity Crash", f"An athlete tracking index key matching registration metadata record ID '{stu_id}' already exists!")
-                    wb.close()
-                    return
+            # 1. FIXED DUPLICATE CHECKER: Safely scans existing entries
+            is_duplicate = False
+            if sheet.max_row >= 2:
+                for r in sheet.iter_rows(min_row=2, max_row=sheet.max_row, values_only=True):
+                    if r and r and str(r).strip() == stu_id:
+                        is_duplicate = True
+                        break
             
-            # Append rows down directly into spreadsheet
-            sheet.append([
+            if is_duplicate:
+                messagebox.showerror("Key Integrity Crash", f"An athlete tracking index key matching record ID '{stu_id}' already exists!")
+                wb.close()
+                return
+            
+            # 2. FIXED APPEND MECHANISM: Force find the exact target row number
+            target_row = sheet.max_row + 1
+            row_data = [
                 stu_id, name, combined_class_section, house, dob,
                 float(h_str), float(w_str), self.check_100_var.get(), self.check_200_var.get()
-            ])
-            wb.save(self.filename)
-            messagebox.showinfo("Success", f"Registration complete! Athlete '{name}' recorded under Class {combined_class_section} safely.")
+            ]
             
-            # Flush entry text items to handle quick sequential entries efficiently
+            # Instead of using sheet.append(), we write cell-by-cell explicitly to block background mirroring
+            for col_idx, value in enumerate(row_data, start=1):
+                sheet.cell(row=target_row, column=col_idx, value=value)
+                
+            wb.save(self.filename)
+            wb.close() # Safely disconnect the file connection stream
+            
+            print(f"✅ SUCCESS: Saved student {stu_id} cleanly to Row {target_row}")
+            messagebox.showinfo("Success", f"Registration complete! Athlete '{name}' recorded successfully.")
+            
+            # Reset UI inputs
             self.ent_id.delete(0, tk.END)
             self.ent_name.delete(0, tk.END)
             self.ent_dob.delete(0, tk.END)
@@ -165,8 +177,8 @@ class StudentRegistryApp(ctk.CTk):
             self.check_200.deselect()
             
         except Exception as e:
-            messagebox.showerror("Storage Device Hardware Contention Fault", f"Disk structural execution locked:\n{str(e)}")
-
+            messagebox.showerror("Storage Fault", f"Disk structural execution locked:\n{str(e)}")
+            
 if __name__ == "__main__":
     app = StudentRegistryApp()
     app.mainloop()
