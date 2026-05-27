@@ -146,12 +146,12 @@ class ModernMeetTerminal:
         
         btn_style = {"font": ("Segoe UI", 10, "bold"), "width": 24, "relief": "flat", "pady": 8, "cursor": "hand2"}
         
-        tk.Button(btn_frame, text="1. Run Initial Seeding", command=self.trigger_seeding, bg="#3282b8", fg="white", **btn_style).grid(row=0, column=0, padx=8, pady=6)
-        tk.Button(btn_frame, text="2. Open Lab Timing Desk", command=self.display_input_desk, bg="#f2a365", fg="black", **btn_style).grid(row=0, column=1, padx=8, pady=6)
+        tk.Button(btn_frame, text="1. Run initial", command=self.trigger_seeding, bg="#3282b8", fg="white", **btn_style).grid(row=0, column=0, padx=8, pady=6)
+        tk.Button(btn_frame, text="2. Open Timing", command=self.display_input_desk, bg="#f2a365", fg="black", **btn_style).grid(row=0, column=1, padx=8, pady=6)
         tk.Button(btn_frame, text="3. Generate Semifinals", command=self.trigger_semifinals, bg="#9b59b6", fg="white", **btn_style).grid(row=0, column=2, padx=8, pady=6)
-        tk.Button(btn_frame, text="4. Finals (Tick Marks)", command=self.display_tickmark_window, bg="#e74c3c", fg="white", **btn_style).grid(row=1, column=0, padx=8, pady=6)
+        tk.Button(btn_frame, text="4. Finals", command=self.display_tickmark_window, bg="#e74c3c", fg="white", **btn_style).grid(row=1, column=0, padx=8, pady=6)
         tk.Button(btn_frame, text="5. Final House Points", command=self.trigger_house_points, bg="#f1c40f", fg="black", **btn_style).grid(row=1, column=1, padx=8, pady=6)
-        tk.Button(btn_frame, text="6. Export Full Packet (PDF)", command=self.export_to_pdf, bg="#27ae60", fg="white", **btn_style).grid(row=1, column=2, padx=8, pady=6)
+        tk.Button(btn_frame, text="6. Export (PDF)", command=self.export_to_pdf, bg="#27ae60", fg="white", **btn_style).grid(row=1, column=2, padx=8, pady=6)
 
         term_frame = tk.Frame(self.window, bg="#1b262c", bd=5, relief="sunken")
         term_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)

@@ -33,7 +33,6 @@ class StudentRegistryApp(ctk.CTk):
         banner = ctk.CTkLabel(self, text="ATHLETE MASTER REGISTRY", font=ctk.CTkFont(size=18, weight="bold"), text_color="#64B5F6", pady=15)
         banner.pack(fill=tk.X)
         
-        # Scrollable Form Body Container to keep inputs clean on mobile
         form_frame = ctk.CTkScrollableFrame(self, width=450, height=480)
         form_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
         
