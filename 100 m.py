@@ -158,7 +158,7 @@ class ModernMeetTerminal:
         
         self.display = tk.Text(term_frame, bg="#1b262c", fg="#00ffcc", font=("Consolas", 11), insertbackground="white", borderwidth=0, highlightthickness=0)
         self.display.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        self.display.insert(tk.END, "> SYSTEM INITIALIZED.\n> AWAITING EXCEL DATA STREAM...\n\n[INSTRUCTION] Click '1. Run Initial Seeding' to load the database.")
+        self.display.insert(tk.END, "> SYSTEM INITIALIZED.\n> AWAITING EXCEL DATA STREAM...\n\n[INSTRUCTION] Click '1. Run Initial' to load the database.")
 
     def trigger_seeding(self):
         success, message = self.pipeline.load_excel_workbook()
@@ -173,7 +173,7 @@ class ModernMeetTerminal:
         rows = self.pipeline.cursor.fetchall()
         
         if not rows:
-            messagebox.showwarning("Empty System", "No athletes are seeded!\nPlease click '1. Run Initial Seeding' first.")
+            messagebox.showwarning("Empty System", "No athletes are seeded!\nPlease click '1. Run Initial' first.")
             return
 
         desk = tk.Toplevel(self.window)
@@ -220,7 +220,7 @@ class ModernMeetTerminal:
             return
             
         self.pipeline.cursor.execute("DELETE FROM semifinals_output")
-        log_view = "=== STAGE 2: OFFICIAL SEMIFINALS SEEDING SHEET ===\n"
+        log_view = "=== STAGE 2: OFFICIAL SEMIFINALS ===\n"
         
         # ⏱️ PARAMETER DICTIONARY: Set your maximum allowed times for each division here
         CUTOFF_TIMES = {
